@@ -82,8 +82,8 @@ class Robot_Controller:
         self.robot_turn = 0 #[-1,1]
 
         # The arm lengths, maybe.
-        self.l1 = 0.208
-        self.l2 = 0.068
+        self.l1 = 0.12
+        self.l2 = 0.12
 
         self.robot_arm_curr_pos = [self.l2, 0, self.l1] # (s, phi, z). Corresponds to (x, joint1, 1 in lecture calculations).
         self.robot_group_arm_curr = [0, 0, 0, 0] # in radians

@@ -22,12 +22,16 @@ class Robot_Controller:
     # CALLBACK FUNCTIONS GO HERE!
     
     def onLeftStickChange(self, LRval, UDval):
-        self.robot_vcel = -UDval
+        self.robot_vel = -UDval
+        if (abs(self.robot_vel) <= 0.05):
+            self.robot_vel = 0
         # print ("Left js value changed to ", UDval)
         self.cmd_pub.publish(Vector3(self.robot_vel, 0, 0), Vector3(0, 0, self.robot_turn))
 
     def onRightStickChange(self, LRval, UDval):
         self.robot_turn = -LRval
+        if (abs(self.robot_turn) <= 0.05):
+            self.robot_turn = 0
         # print ("Right js value changed to ", LRval)
         self.cmd_pub.publish(Vector3(self.robot_vel, 0, 0), Vector3(0, 0, self.robot_turn))
 

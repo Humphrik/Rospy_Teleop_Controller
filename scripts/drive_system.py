@@ -102,7 +102,7 @@ class Robot_Controller:
 
         self.robot_arm_curr_pos = [self.l2, 0, self.l1] # (s, phi, z). Corresponds to (x, joint1, 1 in lecture calculations).
         self.robot_group_arm_curr = [0, 0, 0, 0] # in radians
-        self.robot_group_gripper_curr = [0.0, 0.0] # we can open when pressing down on TRIANGLE (?), closes when not
+        self.robot_group_gripper_curr = [0.01, 0.01] # we can open when pressing down on TRIANGLE (?), closes when not
         self.robot_safety = 0 # turns into 1 when SQUARE is pressed once? Back to 0 when pressed again? (With printed message of change
 
         # Parameters for moving arm.
@@ -203,6 +203,8 @@ class Robot_Controller:
         #self.robot_group_arm_curr[3] = self.wrist_offset + (math.pi/2 - self.robot_group_arm_curr[1]) - (math.pi/2 + self.robot_group_arm_curr[2])
         self.robot_group_arm_curr[3] = self.wrist_offset -(self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
 
+
+
         # change gripper angle by user
         if (self.grip_ldir > 0):
             if (self.robot_group_arm_curr[3] + self.wrist_offset < 2.2):
@@ -210,8 +212,9 @@ class Robot_Controller:
         elif (self.grip_rdir < 0):
             if (self.robot_group_arm_curr[3] + self.wrist_offset > -2.2):
                 self.wrist_offset -= d4
-        else:
-             self.wrist_offset = self.robot_group_arm_curr[3] + (self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
+             
+        self.robot_group_arm_curr[3] = self.wrist_offset -(self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
+        self.wrist_offset = self.robot_group_arm_curr[3] + (self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
 
 
 

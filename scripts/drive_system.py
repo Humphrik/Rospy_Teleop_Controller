@@ -25,6 +25,13 @@ class Robot_Controller:
         self.robot_vel = -UDval
         if (abs(self.robot_vel) <= 0.06):
             self.robot_vel = 0
+        if (self.robot_safety and self.obstruction):
+            if (self.obstruction < 0 and self.robot_vel < 0):
+                self.robot_vel = 0
+            elif (self.obstruction > 0 and self.robot_vel > 0):
+                self.robot_vel = 0
+            else:
+                pass
         # print ("Left js value changed to ", UDval)
         self.cmd_pub.publish(Vector3(self.robot_vel, 0, 0), Vector3(0, 0, self.robot_turn))
 
@@ -38,23 +45,22 @@ class Robot_Controller:
     def onRightBtn1Change(self, val):
         self.z_dir = val
         
-        
     def onLeftBtn1Change(self, val):
         self.z_dir = -val
+
+    def onRightBtn2Change(self, val):
+        self.grip_dir = val
+
+    def onLeftBtn2Change(self, val):
+        self.grip_dir = -val
 
     def onHatChange(self, LRval, UDval):
         # Setting the directions.
         self.s_dir = UDval
         self.phi_dir = LRval
 
-
     def onTriangleBtnChange(self, val):
-        if (val):
-            self.robot_group_gripper_curr = [0.009, 0.009]
-        else:
-            self.robot_group_gripper_curr = [0.0, 0.0]
-        self.move_group_gripper.go(self.robot_group_gripper_curr, wait=True)
-        self.move_group_gripper.stop()
+        self.robot_gripper_open = val
 
     def onSquareBtnChange(self, val):
         if (self.robot_safety and val):
@@ -74,8 +80,11 @@ class Robot_Controller:
         self.move_group_gripper = moveit_commander.MoveGroupCommander("gripper")
 
         # subscribing to LIDAR data scan for safety mode
-#        self.data = LaserScan()
- #       rospy.Subscriber("scan", LaserScan, self.robot_scan_received)
+        self.data = LaserScan()
+        rospy.Subscriber("scan", LaserScan, self.robot_scan_received)
+
+        # parameter for LIDAR scan to detect obstruction
+        self.obstruction = 0
 
         # Initialze the robot parameters we want to track.
         self.robot_vel = 0 #[-1,1]
@@ -95,6 +104,10 @@ class Robot_Controller:
         self.phi_dir = 0
         self.z_dir = 0
 
+        # Parameters for moving gripper
+        self.robot_gripper_open = 0 # takes value of button that triggers gripper movement
+        self.robot_grip = 1 # multiplies to self.robot_gripper_open to change direction after reaching a limit
+        self.grip_dir = 0
 
         # initialize robot arm position
         self.move_group_gripper.go(self.robot_group_gripper_curr, wait=True)
@@ -111,16 +124,20 @@ class Robot_Controller:
         """
 
 
-#    def robot_scan_received(self, data):
- #       if (self.robot_safety):
-  #          if (data.ranges[0] < (self.robot_group_arm_curr[0]+0.1)):
-   #             if (self.robot_vel > 0):
-    #                self.cmd_pub.publish(Vector3(0, 0, 0), Vector3(0, 0, self.robot_turn))
-     #               print("CAUTION: Obstruction ahead")
-      #      elif (data.ranges[180] < (self.robot_group_arm_curr[0]+0.1)):
-       #         if (self.robot_vel > 0):
-        #            self.cmd_pub.publish(Vector3(0, 0, 0), Vector3(0, 0, self.robot_turn))
-         #           print("CAUTION: Obstruction ahead")
+    def robot_scan_received(self, data):
+        if (self.robot_safety):
+            if (data.ranges[0] < 0.7):
+                if (self.robot_vel > 0):
+                    self.obstruction = 1
+                    print("CAUTION: Obstruction ahead")
+            elif (data.ranges[180] < 0.7):
+                if (self.robot_vel < 0):
+                    self.obstruction = -1
+                    print("CAUTION: Obstruction ahead")
+            else:
+                self.obstruction = 0
+        else:
+            self.obstruction = 0
 
 
     def update_arm(self):
@@ -128,6 +145,8 @@ class Robot_Controller:
         ds = 0.005
         dphi = math.pi/90
         dz = 0.005
+        d4 = 0.1
+        dg = 0.001
 
         if (self.s_dir == 0 and self.phi_dir == 0 and self.z_dir == 0):
             self.move_group_arm.stop()
@@ -140,7 +159,7 @@ class Robot_Controller:
         # Turning the arm CW/CCW. Phi and joint 1's values are the same.
         if (self.phi_dir != 0):
             self.robot_group_arm_curr[0] += dphi * -self.phi_dir
-            if (abs(self.robot_group_arm_curr[0])  > 2.86):
+            if (abs(self.robot_group_arm_curr[0]) > 2.86):
                 self.robot_group_arm_curr[0] = 2.86 * -self.phi_dir
             self.robot_arm_curr_pos[1] = self.robot_group_arm_curr[0] 
 
@@ -159,15 +178,27 @@ class Robot_Controller:
                 print ("Location out of bounds!")
 
 
-
-
-
         # TODO: Adjust joint four to always be the sum of joint 2 and 3.
         # Note that we can also program an offset for this joint to be changed via buttons.
         #self.robot_group_arm_curr[3] = (math.pi/2 - self.robot_group_arm_curr[1]) - (math.pi/2 + self.robot_group_arm_curr[2])
 
         self.robot_group_arm_curr[3] = -(self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
+        
+        # change gripper angle by user
+        if (self.grip_dir):
+            self.robot_group_arm_curr[3] += d4 * self.grip_dir
+            print("Grip direction changing: ", self.robot_group_arm_curr[3])
 
+        # move gripper when called on, prepetually opening and closing
+        if (self.robot_group_gripper_curr[0] > 0.008):
+            self.robot_grip = -1
+        elif (self.robot_group_gripper_curr[0] < 0.001):
+            self.robot_grip = 1
+
+        if (self.robot_gripper_open):
+            self.robot_group_gripper_curr[0] += dg * self.robot_gripper_open * self.robot_grip
+            self.robot_group_gripper_curr[1] += dg * self.robot_gripper_open * self.robot_grip
+            print("Gripper opening: ", self.robot_group_gripper_curr[0])
 
 
         # Adjust the motion of the arm.
@@ -214,6 +245,8 @@ class Robot_Controller:
                     rightStickChanged = self.onRightStickChange,
                     rightBtn1Changed = self.onRightBtn1Change,
                     leftBtn1Changed = self.onLeftBtn1Change,
+                    rightBtn2Changed = self.onRightBtn2Change,
+                    leftBtn2Changed = self.onLeftBtn2Change,
                     hatChanged = self.onHatChange,
                     triangleBtnChanged = self.onTriangleBtnChange,
                     squareBtnChanged = self.onSquareBtnChange)

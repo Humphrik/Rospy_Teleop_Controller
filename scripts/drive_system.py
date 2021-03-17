@@ -49,10 +49,12 @@ class Robot_Controller:
         self.z_dir = -val
 
     def onRightBtn2Change(self, val):
-        self.grip_dir = val
+        if (val > 0):
+            self.grip_dir = val
 
     def onLeftBtn2Change(self, val):
-        self.grip_dir = -val
+        if (val > 0):
+            self.grip_dir = -val
 
     def onHatChange(self, LRval, UDval):
         # Setting the directions.
@@ -108,6 +110,7 @@ class Robot_Controller:
         self.robot_gripper_open = 0 # takes value of button that triggers gripper movement
         self.robot_grip = 1 # multiplies to self.robot_gripper_open to change direction after reaching a limit
         self.grip_dir = 0
+        self.grip_ang_dir = 1 # either 1 or -1 to chane direction of motion after reaching certain limits
 
         # initialize robot arm position
         self.move_group_gripper.go(self.robot_group_gripper_curr, wait=True)
@@ -186,16 +189,19 @@ class Robot_Controller:
         
         # change gripper angle by user
         if (self.grip_dir):
-            self.robot_group_arm_curr[3] += d4 * self.grip_dir
+            if (self.robot_group_arm_curr[3] < -2.2):
+                self.grip_ang_dir = 1
+            elif (self.robot_group_arm_curr[3] > 2.2):
+                self.grip_ang_dir = -1
+            self.robot_group_arm_curr[3] += d4 * self.grip_dir * self.grip_ang_dir
             print("Grip direction changing: ", self.robot_group_arm_curr[3])
 
         # move gripper when called on, prepetually opening and closing
-        if (self.robot_group_gripper_curr[0] > 0.008):
-            self.robot_grip = -1
-        elif (self.robot_group_gripper_curr[0] < 0.001):
-            self.robot_grip = 1
-
         if (self.robot_gripper_open):
+            if (self.robot_group_gripper_curr[0] > 0.008):
+                self.robot_grip = -1
+            elif (self.robot_group_gripper_curr[0] < 0.001):
+                self.robot_grip = 1
             self.robot_group_gripper_curr[0] += dg * self.robot_gripper_open * self.robot_grip
             self.robot_group_gripper_curr[1] += dg * self.robot_gripper_open * self.robot_grip
             print("Gripper opening: ", self.robot_group_gripper_curr[0])

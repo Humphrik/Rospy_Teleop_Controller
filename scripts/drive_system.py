@@ -141,6 +141,12 @@ class Robot_Controller:
                 self.obstruction = 0
         else:
             self.obstruction = 0
+            if (data.ranges[0] < 0.7):
+                if (self.robot_vel > 0):
+                    print("CAUTION: Obstruction ahead")
+            elif (data.ranges[180] < 0.7):
+                if (self.robot_vel < 0):
+                    print("CAUTION: Obstruction ahead")
 
 
     def update_arm(self):

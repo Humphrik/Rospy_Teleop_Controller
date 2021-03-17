@@ -50,11 +50,15 @@ class Robot_Controller:
 
     def onRightBtn2Change(self, val):
         if (val > 0):
-            self.grip_dir = val
+            self.grip_ldir = val
+        else:
+            self.grip_ldir = 0
 
     def onLeftBtn2Change(self, val):
-        if (val > 0):
-            self.grip_dir = -val
+        if (val > 0 and self.grip_ldir == 0):
+            self.grip_rdir = -val
+        else:
+            self.grip_rdir = 0
 
     def onHatChange(self, LRval, UDval):
         # Setting the directions.
@@ -109,8 +113,15 @@ class Robot_Controller:
         # Parameters for moving gripper
         self.robot_gripper_open = 0 # takes value of button that triggers gripper movement
         self.robot_grip = 1 # multiplies to self.robot_gripper_open to change direction after reaching a limit
-        self.grip_dir = 0
+        
+
+        self.grip_ldir = 0 # The angle of the wrist joint.
+        self.grip_rdir = 0
+        
+
         self.grip_ang_dir = 1 # either 1 or -1 to chane direction of motion after reaching certain limits
+        self.wrist_offset = 0
+        
 
         # initialize robot arm position
         self.move_group_gripper.go(self.robot_group_gripper_curr, wait=True)
@@ -157,13 +168,15 @@ class Robot_Controller:
         d4 = 0.1
         dg = 0.001
 
-        if (self.s_dir == 0 and self.phi_dir == 0 and self.z_dir == 0):
+        # Get the current wrist positions.
+        self.robot_group_arm_curr = self.move_group_arm.get_current_joint_values()
+
+
+        if (self.s_dir == 0 and self.phi_dir == 0 and self.z_dir == 0 and self.grip_ldir == 0 and self.grip_rdir == 0):
             self.move_group_arm.stop()
+            self.wrist_offset = self.robot_group_arm_curr[3] + (self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
             return
 
-        # Update the current positions.
-        self.robot_group_arm_curr = self.move_group_arm.get_current_joint_values()
-        #print(self.robot_group_arm_curr)
 
         # Turning the arm CW/CCW. Phi and joint 1's values are the same.
         if (self.phi_dir != 0):
@@ -172,7 +185,6 @@ class Robot_Controller:
                 self.robot_group_arm_curr[0] = 2.86 * -self.phi_dir
             self.robot_arm_curr_pos[1] = self.robot_group_arm_curr[0] 
 
-        # TODO: Adjust joints 2 and 3 based on the change in s and z (x and y).
         if (self.s_dir != 0 or self.z_dir != 0):
             pos = self.get_xy(self.robot_group_arm_curr[1], self.robot_group_arm_curr[2])
             pos[0] += ds * self.s_dir
@@ -187,20 +199,22 @@ class Robot_Controller:
                 print ("Location out of bounds!")
 
 
-        # TODO: Adjust joint four to always be the sum of joint 2 and 3.
-        # Note that we can also program an offset for this joint to be changed via buttons.
-        #self.robot_group_arm_curr[3] = (math.pi/2 - self.robot_group_arm_curr[1]) - (math.pi/2 + self.robot_group_arm_curr[2])
-
-        self.robot_group_arm_curr[3] = -(self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
         
+        #self.robot_group_arm_curr[3] = self.wrist_offset + (math.pi/2 - self.robot_group_arm_curr[1]) - (math.pi/2 + self.robot_group_arm_curr[2])
+        self.robot_group_arm_curr[3] = self.wrist_offset -(self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
+
         # change gripper angle by user
-        if (self.grip_dir):
-            if (self.robot_group_arm_curr[3] < -2.2):
-                self.grip_ang_dir = 1
-            elif (self.robot_group_arm_curr[3] > 2.2):
-                self.grip_ang_dir = -1
-            self.robot_group_arm_curr[3] += d4 * self.grip_dir * self.grip_ang_dir
-            print("Grip direction changing: ", self.robot_group_arm_curr[3])
+        if (self.grip_ldir > 0):
+            if (self.robot_group_arm_curr[3] + self.wrist_offset < 2.2):
+                self.wrist_offset += d4
+        elif (self.grip_rdir < 0):
+            if (self.robot_group_arm_curr[3] + self.wrist_offset > -2.2):
+                self.wrist_offset -= d4
+        else:
+             self.wrist_offset = self.robot_group_arm_curr[3] + (self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
+
+
+
 
         # move gripper when called on, prepetually opening and closing
         if (self.robot_gripper_open):
@@ -257,8 +271,8 @@ class Robot_Controller:
                     rightStickChanged = self.onRightStickChange,
                     rightBtn1Changed = self.onRightBtn1Change,
                     leftBtn1Changed = self.onLeftBtn1Change,
-                    rightBtn2Changed = self.onRightBtn2Change,
-                    leftBtn2Changed = self.onLeftBtn2Change,
+                    rightTriggerChanged = self.onRightBtn2Change,
+                    leftTriggerChanged = self.onLeftBtn2Change,
                     hatChanged = self.onHatChange,
                     triangleBtnChanged = self.onTriangleBtnChange,
                     squareBtnChanged = self.onSquareBtnChange)

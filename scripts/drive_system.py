@@ -50,13 +50,13 @@ class Robot_Controller:
 
     def onRightBtn2Change(self, val):
         if (val > 0):
-            self.grip_ldir = val
+            self.grip_ldir = -val
         else:
             self.grip_ldir = 0
 
     def onLeftBtn2Change(self, val):
         if (val > 0 and self.grip_ldir == 0):
-            self.grip_rdir = -val
+            self.grip_rdir = val
         else:
             self.grip_rdir = 0
 
@@ -185,6 +185,7 @@ class Robot_Controller:
                 self.robot_group_arm_curr[0] = 2.86 * -self.phi_dir
             self.robot_arm_curr_pos[1] = self.robot_group_arm_curr[0] 
 
+        # Moving in the s-z plane.
         if (self.s_dir != 0 or self.z_dir != 0):
             pos = self.get_xy(self.robot_group_arm_curr[1], self.robot_group_arm_curr[2])
             pos[0] += ds * self.s_dir
@@ -204,14 +205,14 @@ class Robot_Controller:
         self.robot_group_arm_curr[3] = self.wrist_offset -(self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
 
 
-
-        # change gripper angle by user
-        if (self.grip_ldir > 0):
-            if (self.robot_group_arm_curr[3] + self.wrist_offset < 2.2):
-                self.wrist_offset += d4
-        elif (self.grip_rdir < 0):
-            if (self.robot_group_arm_curr[3] + self.wrist_offset > -2.2):
-                self.wrist_offset -= d4
+        if (self.s_dir == 0 and self.phi_dir == 0 and self.z_dir == 0):
+            # change gripper angle by user
+            if (self.grip_ldir < 0):
+                if (self.robot_group_arm_curr[3] + self.wrist_offset > -2.2):
+                    self.wrist_offset -= d4
+            elif (self.grip_rdir > 0):
+                if (self.robot_group_arm_curr[3] + self.wrist_offset < 2.2):
+                    self.wrist_offset += d4
              
         self.robot_group_arm_curr[3] = self.wrist_offset -(self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
         self.wrist_offset = self.robot_group_arm_curr[3] + (self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
@@ -239,7 +240,8 @@ class Robot_Controller:
             self.robot_group_gripper_curr[0] += dg * self.robot_grip
             self.robot_group_gripper_curr[1] += dg * self.robot_grip
             print("Gripper moving: ", self.robot_group_gripper_curr[0])
-
+        else:
+            return
         # Adjust the motion of the arm.
         try:
              self.move_group_gripper.go(self.robot_group_gripper_curr, wait=False)

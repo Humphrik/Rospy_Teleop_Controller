@@ -166,7 +166,7 @@ class Robot_Controller:
         dphi = math.pi/90
         dz = 0.005
         d4 = 0.1
-        dg = 0.001
+
 
         # Get the current wrist positions.
         self.robot_group_arm_curr = self.move_group_arm.get_current_joint_values()
@@ -217,25 +217,35 @@ class Robot_Controller:
         self.wrist_offset = self.robot_group_arm_curr[3] + (self.robot_group_arm_curr[1] + self.robot_group_arm_curr[2])
 
 
-
-
-        # move gripper when called on, prepetually opening and closing
-        if (self.robot_gripper_open):
-            if (self.robot_group_gripper_curr[0] > 0.008):
-                self.robot_grip = -1
-            elif (self.robot_group_gripper_curr[0] < 0.001):
-                self.robot_grip = 1
-            self.robot_group_gripper_curr[0] += dg * self.robot_gripper_open * self.robot_grip
-            self.robot_group_gripper_curr[1] += dg * self.robot_gripper_open * self.robot_grip
-            print("Gripper opening: ", self.robot_group_gripper_curr[0])
-
-
+        
         # Adjust the motion of the arm.
         try:
              self.move_group_arm.go(self.robot_group_arm_curr, wait=False)
         except(moveit_commander.exception.MoveItCommanderException):
              print ("Desired motion out of bounds!")
              self.move_group_arm.stop()
+
+
+    def update_gripper(self):
+        dg = 0.001
+
+
+        # perpetually open and close gripper when called on
+        if (self.robot_gripper_open):
+            if (self.robot_group_gripper_curr[0] > 0.019):
+                self.robot_grip = -1
+            elif (self.robot_group_gripper_curr[0] < 0.005):
+                self.robot_grip = 1
+            self.robot_group_gripper_curr[0] += dg * self.robot_grip
+            self.robot_group_gripper_curr[1] += dg * self.robot_grip
+            print("Gripper moving: ", self.robot_group_gripper_curr[0])
+
+        # Adjust the motion of the arm.
+        try:
+             self.move_group_gripper.go(self.robot_group_gripper_curr, wait=False)
+        except(moveit_commander.exception.MoveItCommanderException):
+             print ("Desired motion out of bounds!")
+             self.move_group_gripper.stop()
 
 
     def get_angles(self, x, y):
@@ -294,6 +304,7 @@ class Robot_Controller:
                 # Put stuff here while controller is running.
                 keepRunning = cnt.controllerStatus()
                 self.update_arm()
+                self.update_gripper()
                 r.sleep()
 
         finally:

@@ -25,7 +25,7 @@ update_arm, where inverse kinematics and gripper manipulation are implemented.
 ### Challenges
 With such an unusual topic, we ran the risk of not being able to find the right support necessary to implement this project. Luckily, we 
 found all the right things to use in order to make the connection from controller to robot. Another problem was inverse kinematics as a 
-whole. Attempting # DOF inverse kinematics proved to be quite a challenge. In the end, it came out as 2 DOF inverse kinematics, with the 
+whole. Attempting 3 DOF inverse kinematics proved to be quite a challenge. In the end, it came out as 2 DOF inverse kinematics, with the 
 gripper adjusting with the motion of the arm to maintain a suitable angle. Either way, we realized the user should have more control over 
 the angle of the gripper, so we produced functionality for that with the second pair of shoulder functions. Another challenge was taking 
 into account the possibility of the robot tipping over since the user has so much freedom with arm movement. That is still a problem not 
@@ -42,5 +42,20 @@ preset actions that the user may find useful for certain, common tasks.
 * Thinking about how the user would interact with the robot was useful in deciding what to apply and for which buttons. Human-computer interaction was a very important factor to consider.
 * Inverse kinematics should never be underestimated.
 * Using a controller to move the robot was way easier and should be used for everything from now on (maybe you can use it for your next class).
+
+### Gifs of behavior
+- Here is the robot being driven with 2 joysticks
+
+
+![Drive System](Teleop_Drive.gif)
+
+
+- A Demonstration of the freedom of movement for the arm.
+
+
+![motion](Arm_Movement.gif)
+
+
+
 
 
